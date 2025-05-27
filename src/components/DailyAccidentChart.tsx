@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react'
+// src/components/DailyAccidentChart.tsx
+import React, { useState, useEffect } from 'react'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,6 +11,7 @@ import {
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import styled from '@emotion/styled'
+import axios from 'axios'
 
 ChartJS.register(
   CategoryScale,
@@ -21,25 +23,50 @@ ChartJS.register(
 )
 
 interface Props {
-  labels: string[]
-  data:    number[]
+  region: string
 }
 
-export default function DailyAccidentChart({ labels, data }: Props ) {
-  const today = new Date().getDate()
+export default function DailyAccidentChart({ region }: Props) {
+  const [labels, setLabels] = useState<string[]>([])
+  const [data,   setData]   = useState<number[]>([])
 
+  useEffect(() => {
+    if (!region) return
+
+    axios
+      .get<{ region: string; data: { date: string; count: number }[] }>(
+        '/traffic-events/daily-count',
+        { params: { region } }
+      )
+      .then(res => {
+        const arr = res.data.data
+        console.log(arr)
+        const dayLabels = arr.map(e => {
+          const dayNum = parseInt(e.date.slice(-2), 10)
+          return `day${dayNum}`
+        })
+        setLabels(dayLabels)
+        setData(arr.map(e => e.count))
+      })
+      .catch(err => {
+        console.error('DailyAccidentChart 데이터 로드 실패', err)
+      })
+  }, [region])
+
+  // 2) 날짜 윈도우(최근 9일) 세팅
+  const today = new Date().getDate()
   const windowSize = 9
   const winLabels = Array.from({ length: windowSize }, (_, i) => {
     const day = today - (windowSize - 1 - i)
     return `day${day}`
   })
   const winTodayIdx = windowSize - 1
-
   const winData = winLabels.map(lbl => {
     const idx = labels.indexOf(lbl)
     return idx >= 0 ? data[idx] : 0
   })
 
+  // 3) 차트 설정
   const chartData = {
     labels: winLabels,
     datasets: [{
@@ -56,36 +83,18 @@ export default function DailyAccidentChart({ labels, data }: Props ) {
       ),
     }]
   }
-
   const options = {
     indexAxis: 'x' as const,
     responsive: true,
     maintainAspectRatio: false,
     events: [],
-
     scales: {
-      x: {
-        grid: { display: false },
-        ticks: {
-          color: (_: any, i: number) =>
-            i === winTodayIdx ? '#D81B60' : '#999',
-          font: { weight: '500' }
-        }
-      },
-      y: {
-        grid: { color: '#eee' },
-        ticks: {
-          color: '#999',
-          stepSize: 10,
-          beginAtZero: true,
-          max: 100,
-        }
-      }
+      x: { grid: { display: false }, ticks: { color: (_:any,i:number)=> i===winTodayIdx? '#D81B60':'#999', font:{ weight:'500' } }},
+      y: { grid: { color: '#eee' }, ticks: { color: '#999', stepSize: 10, beginAtZero: true, max: 100 }}
     },
-
     plugins: {
       tooltip: false,
-      legend:  { display: false },
+      legend: { display: false },
       title: {
         display: true,
         text: 'Daily Accident Rate',

@@ -6,7 +6,7 @@ import axios from 'axios'
 
 import Sidebar from './components/Sibebar'
 import Chart from './components/Chart'
-import MapView from './components/MapView'
+import MapView from './components/Mapview'
 import DailyAccidentChart from './components/DailyAccidentChart'
 import CCTVComponent from './components/CCTV'
 const PageWrapper = styled.div`
@@ -48,13 +48,7 @@ const MapWrapper = styled(Card)`
   }
 `
 
-// 예시용 사고율
-const allAccidentRates: Record<string, number> = {
-  day13: 50, day14: 37, day15: 50,
-  day16: 33, day17: 57, day18: 48,
-  day19: 33, day20: 42, day21: 55,
-  day22: 60, day23: 52,
-}
+
 
 interface CityTraffic {
   city: string
@@ -79,11 +73,12 @@ export default function Dashboard() {
 
   const view = (searchParams.get('view') as 'daily' | 'monthly') ?? 'daily'
   const [selectedCCTV, setSelectedCCTV] = useState<CCTVItem | null>(null)
-
+  const [eventLabels, setEventLabels] = useState<string[]>([])
+  const [eventData,   setEventData]   = useState<number[]>([])
   const fetchNearest = async (lat: number, lng: number) => {
 		setSelectedCCTV(null);
 		try {
-			const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/nearest-cctv?lat=${lat}&lng=${lng}`);
+			const res = await fetch(`http://localhost:8001/api/nearest-cctv?lat=${lat}&lng=${lng}`);
 			const json = await res.json();
 			if (res.ok && !json.error) setSelectedCCTV(json as CCTVItem);
 		} catch (e) {
@@ -104,6 +99,7 @@ export default function Dashboard() {
     else{
       console.log("hello")
     }
+    console.log(region,213131)
     axios
       .get('/traffic/hourly', {
         params: { region },
@@ -115,21 +111,6 @@ export default function Dashboard() {
         console.error('교통 이벤트 213조회 실패', err.response?.status, err.response?.data);
       });
   }, [region]);  
-  useEffect(() => {
-    console.log("region:", region);
-  if (!region) return;
-
-    axios.get('/traffic-events/daily-count', {
-      params: { region },   
-    })
-    .then(res => {
-      console.log(res.data);   
-      setCount(res.data.count);
-    })
-    .catch(err => {
-      console.error('교통 이벤트 조회 실패', err);
-    });
-  }, [region]);
   
   useEffect(() => {
     axios.get('/traffic/average-stats', {
@@ -140,16 +121,6 @@ export default function Dashboard() {
     })
   }, [view])
 
-  const { labels: accLabels, data: accData } = useMemo(() => {
-    const today = new Date().getDate()
-    const windowSize = 9
-    const winLabels = Array.from({ length: windowSize }, (_, i) => {
-      const day = today - (windowSize - 1 - i)
-      return `day${day}`
-    })
-    const winData = winLabels.map(lbl => allAccidentRates[lbl] ?? 0)
-    return { labels: winLabels, data: winData }
-  }, [])
 
   return (
     <PageWrapper>
@@ -181,10 +152,7 @@ export default function Dashboard() {
         </MapWrapper>
        
         <SectionTitle>Daily Accident Rate</SectionTitle>
-        <DailyAccidentChart
-          labels={accLabels}
-          data={accData}
-        />
+        <DailyAccidentChart region={region} />
       </Section>
 
       <Section>

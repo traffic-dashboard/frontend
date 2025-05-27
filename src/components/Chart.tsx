@@ -15,6 +15,8 @@ import annotationPlugin from 'chartjs-plugin-annotation'
 import { Line, Pie } from 'react-chartjs-2'
 import styled from '@emotion/styled'
 import axios from 'axios'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+
 import { useEffect,useState } from 'react'
 ChartJS.register(
   CategoryScale,
@@ -52,7 +54,7 @@ export default function Chart({
   const now         = new Date()
   const currentHour = now.getHours()
   const windowSize  = 10
-
+  const [searchParams] = useSearchParams()
   const labels: string[]              = []
   const histTraffic:  (number|null)[] = []
   const histSpeed:    (number|null)[] = []
@@ -63,13 +65,16 @@ export default function Chart({
     histTraffic.push(trafficData[h])
     histSpeed.push(speedData[h])
   }
+  const region = searchParams.get('region')
   const [data, setData] = useState<any>(null)
   const [error, setError] = useState<string|null>(null)
   const currentIdx = labels.length - 1
   useEffect(() => {
-    axios.get('/traffic/vehicle-type-share')
+    if (!region) return
+  
+    axios
+      .get(`/traffic/vehicle-share?region=${region}`)  // 백틱 사용!
       .then(res => {
-        console.log('API 응답 전체:', res)
         console.log('res.data:', res.data)
         setData(res.data)
       })
@@ -77,7 +82,8 @@ export default function Chart({
         console.error('API 호출 실패:', err)
         setError('데이터 로드에 실패했습니다')
       })
-  }, [])
+  }, [region])
+  
   const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
