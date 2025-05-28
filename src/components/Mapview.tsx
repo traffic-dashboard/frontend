@@ -4,13 +4,16 @@ import 'leaflet/dist/leaflet.css'
 import styled from '@emotion/styled'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
+
 // 기본 마커 아이콘 설정
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
 
-type Category = 'accident' | 'construction' | 'unexpected'
+// 조회 가능한 이벤트 타입 정의
+type Category = 'all' | 'acc' | 'cor' | 'wea' | 'ete' | 'dis' | 'etc'
+
 interface TrafficEvent {
   eventType: string
   eventDetailType: string
@@ -18,49 +21,53 @@ interface TrafficEvent {
   coordX: string
   coordY: string
 }
+
 interface MapViewProps {
   onMarkerClick: (lat: number, lng: number) => void
 }
 
 export default function MapView({ onMarkerClick }: MapViewProps) {
-  const [activeCategory, setActiveCategory] = useState<Category>('accident')
+  const [activeCategory, setActiveCategory] = useState<Category>('all')
   const [events, setEvents] = useState<TrafficEvent[]>([])
 
-
+  // 버튼 클릭 시 activeCategory가 바뀌면 이 useEffect가 재실행됩니다.
   useEffect(() => {
-    const typeParam =
-      activeCategory === 'accident' ? 'acc'
-      : activeCategory === 'construction' ? 'cor'
-      : 'unexp'
-
-    fetch(`/traffic-events?eventType=${typeParam}`)
+    fetch(`/traffic-events?eventType=${activeCategory}`)
       .then(res => {
         if (!res.ok) throw new Error(`Status ${res.status}`)
         return res.json()
       })
       .then((data: any) => {
-        const list: TrafficEvent[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data.events)
-            ? data.events
-            : []
+        // FastAPI에서 { events: [...] } 형태로 응답한다고 가정
+        const list: TrafficEvent[] = Array.isArray(data.events) ? data.events : []
         setEvents(list)
       })
       .catch(console.error)
   }, [activeCategory])
 
+  // 각 타입에 대한 버튼 라벨 매핑
+  const labelsMap: Record<Category, string> = {
+    all: 'All',
+    acc: 'Accident',
+    cor: 'Construction',
+    wea: 'Weather',
+    ete: 'Other Incident',
+    dis: 'Disaster',
+    etc: 'Etc.'
+  }
+
   return (
     <Container>
       <LegendBar>
-        {(['accident','construction','unexpected'] as Category[]).map(cat => (
+        {(
+          ['all','acc','cor','wea','ete','dis','etc'] as Category[]
+        ).map(cat => (
           <LegendItem
             key={cat}
             active={activeCategory === cat}
             onClick={() => setActiveCategory(cat)}
           >
-            {cat === 'accident' ? 'Accident' 
-             : cat === 'construction' ? 'Construction' 
-             : 'Unexpected'}
+            {labelsMap[cat]}
           </LegendItem>
         ))}
       </LegendBar>
@@ -93,18 +100,25 @@ export default function MapView({ onMarkerClick }: MapViewProps) {
 const Container = styled.div`
   width: 100%;
 `
+
 const LegendBar = styled.div`
   display: flex;
-  gap: 24px;
+  gap: 16px;
   background: #fff;
   border-radius: 8px 8px 0 0;
   padding: 8px 16px;
 `
+
 const LegendItem = styled.div<{ active: boolean }>`
   cursor: pointer;
-  color: ${({ active }) => (active ? '#FF4E62' : '#AAA')};
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: ${({ active }) => (active ? '#FCE4EC' : 'transparent')};
+  color: ${({ active }) => (active ? '#D81B60' : '#555')};
   font-weight: ${({ active }) => (active ? '600' : '400')};
+  user-select: none;
 `
+
 const MapWrapper = styled.div`
   width: 100%;
   height: 400px;

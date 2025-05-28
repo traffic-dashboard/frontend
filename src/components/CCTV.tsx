@@ -72,7 +72,7 @@ const CCTVComponent: React.FC<CCTVPlayerProps> = ({ cctv }) => {
           <Video ref={videoRef} controls />
         </>
       ) : (
-        <Placeholder>마커를 클릭해 CCTV 영상을 불러오세요.</Placeholder>
+        <Placeholder>if you click marker, you can see real time cctv</Placeholder>
       )}
     </Container>
   )

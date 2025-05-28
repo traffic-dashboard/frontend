@@ -126,7 +126,6 @@ export default function Sidebar() {
           hidden
         />
 
-        {/* Hour */}
         <Label>Hour</Label>
         <ToggleGroup>
           <Toggle
